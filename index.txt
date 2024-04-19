@@ -11,7 +11,7 @@
 
 $Play!clip.mp4
 $Stop!video_stop
-$Radio!radio2.txt
+$Radio!radio.txt
 $Electronics!electronics.txt
 $Techno\ncraft!techno.txt
 $Web\nDesigh!webdesign.txt
@@ -24,7 +24,7 @@ $Project!navigate:projects.txt
 
 # this is a bold heading
 =QUANTUM TECH CLUB INFO TERMINAL=
-# this is an embedded image - or it could be a video
+# this is an embedded image - currently only 1 per pages is supported.
 [quarts.png]
 # This is plain text 
 QuARTS, the Quantum Amateur Radio & Technology Society, is an exciting
