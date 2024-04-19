@@ -1,0 +1,31 @@
+$Flee!adventure.txt
+$Escape!adventure.txt
+$Pet!adventure.txt
+$Punt!adventure.txt
+$Index!index.txt
+
+=QUANTUM TECH QUEST=
+
+\+ *             +      / |   ,-~ /             +
+\+      .              Y :|  //  /                . 
+\+          .          | jj /( .^     *
+\+                *    >-"~"-v"              .    
+\+ *                  /       Y
+\+    .     .        jo  o    |     .            +
+\+                  ( ~T~     j                   
+\+       +           >._-' _./         +
+\+                /| ;-"~ _  l
+\+   .           / l/ ,-"~    \     +
+\+               \//\/      .- \
+\+        +       Y        /    Y
+\+                l       I     !
+\+                ]\      _\    /"\
+\+               (" ~----( ~   Y.  )
+\+           ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You burst through the door narrowly missing the jaws of a hideous
+monster!
+What will you do now??
+                                                               
+# This is bold text
+_Use the side buttons to proceed.__

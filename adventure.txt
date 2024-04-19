@@ -1,0 +1,20 @@
+$North!adventure2.txt
+$East!adventure2.txt
+$South!adventure2.txt
+$West!adventure.txt
+$Index!index.txt
+
+=QUANTUM TECH QUEST=
+
+\+   ______      __    __   _______     _______.___________.
+\+  /  __  \    |  |  |  | |   ____|   /       |           |
+\+ |  |  |  |   |  |  |  | |  |__     |   (----`---|  |----`
+\+ |  |  |  |   |  |  |  | |   __|     \   \       |  |     
+\+ |  `--'  '--.|  `--'  | |  |____.----)   |      |  |     
+\+  \_____\_____\\______/  |_______|_______/       |__|     
+                                                         
+You materialise in the center of a large open hallway.
+There are doors to the NORTH, EAST, SOUTH and WEST.
+                                                               
+# This is bold text
+_Choose a door wisely..._

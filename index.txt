@@ -1,0 +1,38 @@
+# This file is a page on the terminal
+#
+# '#' means a comment which can go anywhere in this file
+#
+# First are the captions and actions for the buttons
+# The format is: $Caption!action
+# Actions could be
+# filename.txt - loads and then renders that page
+# filename.mp4 - plays that video overlaying the page
+# video_stop - stops the video
+
+$Play!clip.mp4
+$Stop!video_stop
+$Radio!radio2.txt
+$Electronics!electronics.txt
+$Techno\ncraft!techno.txt
+$Web\nDesigh!webdesign.txt
+$Making!navigate:making.txt
+$Project!navigate:projects.txt
+
+# The rest of file is similar to markdown
+# It can be freeform text with some formatting around it to make
+# a more interesting page
+
+# this is a bold heading
+=QUANTUM TECH CLUB INFO TERMINAL=
+# this is an embedded image - or it could be a video
+[quarts.png]
+# This is plain text 
+QuARTS, the Quantum Amateur Radio & Technology Society, is an exciting
+new technology group that is based in Ormskirk, Lancashire. It was formed
+on the 26th October 2016 by a group of like-minded amateur technologists,
+makers and crafters who wanted a place to practice their hobby, share
+their interests with their peers, enthuse and encourage others with an
+interest in technology and promote technology as a hobby to others.
+
+# This is bold text
+_Navigate using the buttons on the side of the terminal_

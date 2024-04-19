@@ -1,0 +1,33 @@
+# This file is a page on the terminal
+#
+# '#' means a comment which can go anywhere in this file
+#
+# First are the captions and actions for the buttons
+# The format is: $Caption!action
+# Actions could be navigate:page, video:play, video:stop that kind of thing.
+
+$Index!index.txt
+$Adenture!adventure.txt
+$Coding!naviage:Coding
+$Electronics!navigate:Electronics
+$Techno\ncraft!naviage:Techno
+$Web\nDesigh!navigate:WebDesign
+$Making!navigate:Making
+$Project!navigate:Projects
+
+=QUANTUM TECH CLUB - RADIO=
+We do radio stuff. Beep beep boop.
+[radio.png]
+\+     _____         _____        _____    ____         _____    
+\+  ___|\    \    ___|\    \   ___|\    \  |    |   ____|\    \   
+\+ |    |\    \  /    /\    \ |    |\    \ |    |  /     /\    \  
+\+ |    | |    ||    |  |    ||    | |    ||    | /     /  \    \ 
+\+ |    |/____/ |    |__|    ||    | |    ||    ||     |    |    |
+\+ |    |\    \ |    .--.    ||    | |    ||    ||     |    |    |
+\+ |    | |    ||    |  |    ||    | |    ||    ||\     \  /    /|
+\+ |____| |____||____|  |____||____|/____/||____|| \_____\/____/ |
+\+ |    | |    ||    |  |    ||    /    | ||    | \ |    ||    | /
+\+ |____| |____||____|  |____||____|____|/ |____|  \|____||____|/ 
+\+   \(     )/    \(      )/    \(    )/     \(       \(    )/    
+\+   '     '      '      '      '    '       '        '    '     
+_Navigate using the buttons on the side of the terminal_
