@@ -1,0 +1,13 @@
+FontSizeNormal=22
+FontSizeHeading=40
+CharHeight=25
+CharWidth=10
+MarginX=200
+MarginY=10
+ButtonHeight=128
+ButtonBorder=10
+ScrollSpeed=10
+TextColour=[0.0, 1.0, 0.0]
+TextBackgroundColour=[0, 0, 0.1]
+ImageBorderColour=[0.0, 0.4, 0.0]
+ButtonColour=[0.5, 1.0, 0.5]

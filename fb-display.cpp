@@ -18,6 +18,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 #include <cmath>
 #include <cstdint>
+#include <vector>
 
 #include "fb-display.h"
 
@@ -167,6 +168,32 @@ void FBDisplay::Clear()
     *fptr++ = clearcolor;
 }
 
+void FBDisplay::Present()
+{
+  if(m_bpp == 32) 
+    memcpy(m_realFbp, m_fbp, (m_screenHeight * m_screenWidth * m_bpp) / 8);
+  else if(m_bpp == 16) {
+    const int width = m_screenWidth;
+    const int height = m_screenHeight;
+    
+    const unsigned char *src = (const unsigned char *)m_fbp;
+    uint16_t *dst = (uint16_t *)m_realFbp;    
+    
+    // we are foolishly ignoring any stride here.
+    for(int y = 0; y<height; y++) {
+      uint16_t *dstRow = dst + (y * width);
+      const unsigned char *srcRow = src + (y * width * 4);
+      for(int x = 0; x<width; x++) {	
+	const uint16_t r = (srcRow[2] >> 3) << SHIFT_R;
+	const uint16_t g = (srcRow[1] >> 2) << SHIFT_G;
+	const uint16_t b = (srcRow[0] >> 3) << SHIFT_B;
+	srcRow += 4;
+	*dstRow++ = (r | g | b);
+      }
+    }    
+  }
+}
+
 bool FBDisplay::Open()
 {
   // Open the framebuffer device file for reading and writing
@@ -194,26 +221,30 @@ bool FBDisplay::Open()
   m_screenHeight = vinfo.yres;
   m_screenWidth = vinfo.xres;
   m_bpp = vinfo.bits_per_pixel;
-  m_stride = finfo.line_length;
+  m_stride = m_screenWidth * 4;//finfo.line_length;
 
-  if(vinfo.bits_per_pixel != 32) {
-    printf("Only supporting 32bpp\n");
+
+  if(!(vinfo.bits_per_pixel == 32 || vinfo.bits_per_pixel == 16)) {
+    printf("Only supporting 32bpp or 16bpp\n");
     return false;
   }
   
   // map framebuffer to user memory 
   m_screensize = finfo.smem_len;
 
-  m_fbp = (char*)mmap(0, 
-			m_screensize, 
-		      PROT_READ | PROT_WRITE, 
-		      MAP_SHARED, 
-		      m_fbfd, 0);
+  m_realFbp = (char*)mmap(0, 
+			  m_screensize,
+			  PROT_READ | PROT_WRITE, 
+			  MAP_SHARED, 
+			  m_fbfd, 0);
   
-  if (m_fbp == (char *)-1) {
+  if (m_realFbp == (char *)-1) {
     printf("Failed to mmap.\n");
     return false;
   }
+
+  m_tmpFbp.resize(m_screenWidth * m_screenHeight * 4);
+  m_fbp = &m_tmpFbp[0];
 
   Clear();
   usleep(MICROS / 10);
@@ -224,8 +255,8 @@ bool FBDisplay::Open()
 
 void FBDisplay::Close()
 {
-  if(m_fbp)
-    munmap(m_fbp, m_screensize);
+  if(m_realFbp)
+    munmap(m_realFbp, m_screensize);
   if(m_fbfd)
     close(m_fbfd);
 }
@@ -243,8 +274,14 @@ void FBDisplay::vlcUnlock(const uint16_t *pixels)
 void FBDisplay::vlcDisplay()
 {
   const int ypos = m_videoWindowY;
-  const int xpos = (GetScreenWidth() - (m_videoWidth)) / 2;    
-  BlitImage16BitColor(m_vlcFrame, m_videoWidth, m_videoHeight, xpos, ypos);
+  if(true || GetScreenHeight() >= 1024) {
+    const int xpos = (GetScreenWidth() - (m_videoWidth * 2)) / 2;        
+    BlitImage16BitColorDoubleScale(m_vlcFrame, m_videoWidth, m_videoHeight, xpos, ypos);
+  } else {
+    const int xpos = (GetScreenWidth() - (m_videoWidth)) / 2;    
+    BlitImage16BitColor(m_vlcFrame, m_videoWidth, m_videoHeight, xpos, ypos);
+  }
+  Present();
 }
 
 struct VLCImpl {
@@ -257,8 +294,8 @@ bool FBDisplay::VideoPlay(const char *filename)
   VideoStop();
   
   char const *vlc_argv[] = {
-    "--no-xlib", // Don't use Xlib.
-    "--alsa-audio-device", "hw:1,0",
+    "--no-xlib" // Don't use Xlib.
+    //   "--alsa-audio-device", "hw:1,0",
   };
   
   int vlc_argc = sizeof(vlc_argv) / sizeof(*vlc_argv);

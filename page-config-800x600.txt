@@ -1,0 +1,14 @@
+FontSizeNormal=14
+FontSizeHeading=20
+CharHeight=18
+CharWidth=5
+MarginX=100
+MarginY=20;
+ButtonHeight=75
+ButtonBorder=5
+ScrollSpeed=10
+TextColour=[0.0, 1.0, 0.0]
+TextBackgroundColour=[0, 0, 0]
+ImageBorderColour=[0.0, 0.4, 0.0]
+ButtonColour=[0.5, 1.0, 0.5]
+VideoPosY=40

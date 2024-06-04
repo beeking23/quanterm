@@ -19,6 +19,7 @@ public:
   bool Open();
   void Close();
   void Clear();
+  void Present();
 
   void PutPixel(int x, int y, int color);
   void PlotLine(int x0, int y0, int x1, int y1, int color);
@@ -60,6 +61,8 @@ private:
   int m_fbfd = -1;
   int m_textColor = 0xffffffff;
   int m_stride = 0;
+  std::vector<char> m_tmpFbp;
+  char *m_realFbp = nullptr;
   
   uint16_t *m_vlcFrame = nullptr;
   uint16_t *m_vlcPixels = nullptr;  

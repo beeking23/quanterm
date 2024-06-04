@@ -8,6 +8,11 @@ LDLIBS+=$(shell pkg-config --libs cairo) -lm -lvlc
 CC?=gcc
 PROGNAME=quanterm
 
+UNAME_M := $(shell uname -m)
+ifneq ($(filter arm%,$(UNAME_M)),)
+        LDFLAGS += -lwiringPi
+endif
+
 all: quanterm
 
 %.o: %.c
