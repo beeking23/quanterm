@@ -28,7 +28,6 @@ public:
   void BlitImage16BitColorDoubleScale(const uint16_t *src, int width, int height, int xpos, int ypos);
   void BlitImage16BitColor(const uint16_t *src, int width, int height, int xpos, int ypos);    
 
-
   int GetScreenWidth() const { return m_screenWidth; }
   int GetScreenHeight() const { return m_screenHeight; }
 

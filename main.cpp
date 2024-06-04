@@ -696,11 +696,7 @@ int QuanTermApp::AppMain()
     printf("Failed to open framebuffer\n");
     return 0;
   }
-
-  DisplayInst().SetVideoWindowX(m_pageCfg.MarginX);
-  DisplayInst().SetVideoWindowY(m_pageCfg.MarginX);
-  DisplayInst().SetVideoWindowWidth(DisplayInst().GetScreenWidth() - (m_pageCfg.MarginX * 2));
-
+  
   printf("Framebuffer: %i x %i\n", DisplayInst().GetScreenWidth(), DisplayInst().GetScreenHeight());
 
   char pcFile[512];
@@ -709,6 +705,10 @@ int QuanTermApp::AppMain()
     printf("Failed to load page config: %s\n", pcFile);
     return false;
   }
+  
+  DisplayInst().SetVideoWindowX(m_pageCfg.MarginX);
+  DisplayInst().SetVideoWindowY(m_pageCfg.VideoPosY);
+  DisplayInst().SetVideoWindowWidth(DisplayInst().GetScreenWidth() - (m_pageCfg.MarginX * 2));
 
   usleep(1 * 1000000);  
   DisplayInst().Clear();

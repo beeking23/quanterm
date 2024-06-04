@@ -39,29 +39,48 @@ void FBDisplay::BlitImage16BitColorDoubleScale(const uint16_t *srcImg, int width
     height = m_screenHeight - ypos;
   if(width < 0 || height < 0)
     return;
-    
-  int *fbp = (int *)m_fbp;
   
-  // we are foolishly ignoring any stride here.
-  for(int y = 0; y<height; y++) {
-    for(int j = 0; j<2; j++) {
-      int *dst = fbp + ((m_screenWidth) * ((y*2) + j + ypos)) + xpos;
-      const uint16_t * src = srcImg + (y * width);
-      for(int x = 0; x<width; x++) {
-        const uint32_t r = (*src & MASK_R) >> SHIFT_R;
-        const uint32_t g = (*src & MASK_G) >> SHIFT_G;
-        const uint32_t b = (*src & MASK_B) >> SHIFT_B;
-        ++src;      
-        const int pix = (int)(uint32_t)(0xff000000 | ((b << 3) << 16) | ((g << 2) << 8) | (r << 3));
-        *dst++ = pix;
-        *dst++ = pix;
+  if(m_bpp == 16) {
+    uint16_t *fbp = (uint16_t *)m_realFbp;        
+    for(int y = 0; y<height; y++) {
+      for(int j = 0; j<2; j++) {
+	uint16_t *dst = fbp + ((m_screenWidth) * ((y*2) + j + ypos)) + xpos;
+	const uint16_t *src = srcImg + (y * width);
+	for(int x = 0; x<width; x++) {
+	  uint16_t srcPix = *src++;
+	  uint16_t dstPix = ((srcPix & MASK_R) >> 11) | (srcPix & MASK_G) | ((srcPix & MASK_B) << 11);
+	  *dst++ = dstPix;
+	  *dst++ = dstPix;
+	}
       }
     }
+    return;
+  }    
+  
+  if(m_bpp == 32) {
+    int *fbp = (int *)m_realFbp;    
+    for(int y = 0; y<height; y++) {
+      for(int j = 0; j<2; j++) {
+	int *dst = fbp + ((m_screenWidth) * ((y*2) + j + ypos)) + xpos;
+	const uint16_t * src = srcImg + (y * width);
+	for(int x = 0; x<width; x++) {
+	  const uint32_t r = (*src & MASK_R) >> SHIFT_R;
+	  const uint32_t g = (*src & MASK_G) >> SHIFT_G;
+	  const uint32_t b = (*src & MASK_B) >> SHIFT_B;
+	  ++src;      
+	  const int pix = (int)(uint32_t)(0xff000000 | ((b << 3) << 16) | ((g << 2) << 8) | (r << 3));
+	  *dst++ = pix;
+	  *dst++ = pix;
+	}
+      }
+    }
+    return; 
   }
 }
 
 void FBDisplay::BlitImage16BitColor(const uint16_t *srcImg, int width, int height, int xpos, int ypos)
 {
+  /*
   if((xpos + width) > m_screenWidth)
     width = m_screenWidth - xpos;
   if((ypos + height) > m_screenHeight)
@@ -84,6 +103,7 @@ void FBDisplay::BlitImage16BitColor(const uint16_t *srcImg, int width, int heigh
       *dst++ = pix;
     }
   }
+  */
 }
 
 void FBDisplay::PutPixel(int x, int y, int color)
@@ -280,8 +300,7 @@ void FBDisplay::vlcDisplay()
   } else {
     const int xpos = (GetScreenWidth() - (m_videoWidth)) / 2;    
     BlitImage16BitColor(m_vlcFrame, m_videoWidth, m_videoHeight, xpos, ypos);
-  }
-  Present();
+  }  
 }
 
 struct VLCImpl {
