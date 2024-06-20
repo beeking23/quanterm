@@ -27,8 +27,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include "fb-display.h"
 #include "kbhit.h"
 
-#include <map>
-
 FBDisplay& DisplayInst() {
   static FBDisplay g_display;
   return g_display;
@@ -44,27 +42,51 @@ CairoPtr& CairoInst() {
 /// Total overkill :)
 template<typename T> class QuanTermProp {
 public:
+  struct ValueArrayElement {
+    std::string m_name;
+    T *m_pValue;
+  };
+  typedef std::vector<ValueArrayElement> ValueArray;
+  
   QuanTermProp(const std::string& name, T *pValue, T initValue)
   {
     *pValue = initValue;
-    GetValueMap()[name] = pValue;
+    CreateProp(name, pValue);
   }
 
-  typedef std::map<std::string, T *> ValueMap;
-  static ValueMap& GetValueMap() {
-    static ValueMap vMap;
-    return vMap;
+  static ValueArray& GetArray() {
+    static ValueArray arr;
+    return arr;
+  }
+
+  static ValueArrayElement *FindElement(const std::string& name) {
+    ValueArray &arr = GetArray();
+    for(size_t n = 0; n<arr.size(); ++n) {
+      if(arr[n].m_name == name)
+	return &arr[n];
+    }
+    return nullptr;
   }
   
-  static bool SetProp(const std::string& name, T value) {
-    auto& vMap = GetValueMap();
-    auto itr = vMap.find(name);
-    if(itr == vMap.end())
+  static void CreateProp(const std::string& name, T *pValue) {
+    ValueArrayElement *elem = FindElement(name);
+    if(elem == nullptr) {
+      GetArray().push_back({name, pValue});
+      return;
+    }
+    elem->m_pValue = pValue;
+    return;
+  }
+  
+  static bool UpdateProp(const std::string& name, T value) {
+    ValueArrayElement *elem = FindElement(name);
+    if(!elem)
       return false;
-    *itr->second = value;
+    *(elem->m_pValue) = value;
     return true;
   }
 };
+
 
 /// A vector of 3 floats making an  rgb colour
 struct QRGB {
@@ -146,7 +168,7 @@ bool QuanTermPageConfig::LoadPageConfig(const char *filename)
 	printf("Malformed vec3 (colour): '%s'\n", value.c_str());
 	return false;
       }
-      if(!QuanTermProp<QRGB>::SetProp(name, QRGB(r, g, b))) {
+      if(!QuanTermProp<QRGB>::UpdateProp(name, QRGB(r, g, b))) {
 	printf("Unknown config colour '%s'\n", name.c_str());
 	return false;
       }
@@ -161,7 +183,7 @@ bool QuanTermPageConfig::LoadPageConfig(const char *filename)
     }
 
     // otherwise, its a number...
-    if(!QuanTermProp<double>::SetProp(name, atof(value.c_str()))) {
+    if(!QuanTermProp<double>::UpdateProp(name, atof(value.c_str()))) {
       printf("Unknown config number '%s'\n", name.c_str());
       return false;
     }
