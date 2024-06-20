@@ -692,6 +692,7 @@ void QuanTermApp::HandleButtonPress(int n, const std::vector<QuanTermApp::Button
 
 int QuanTermApp::AppMain()
 {
+  // Open the framebuffer
   if(!DisplayInst().Open()) {
     printf("Failed to open framebuffer\n");
     return 0;
@@ -699,17 +700,21 @@ int QuanTermApp::AppMain()
   
   printf("Framebuffer: %i x %i\n", DisplayInst().GetScreenWidth(), DisplayInst().GetScreenHeight());
 
+  // load a page config that corresponds to the framebuffer resolution
   char pcFile[512];
   sprintf(pcFile, "page-config-%ix%i.txt", DisplayInst().GetScreenWidth(), DisplayInst().GetScreenHeight());
   if(!m_pageCfg.LoadPageConfig(pcFile)) {
     printf("Failed to load page config: %s\n", pcFile);
     return false;
   }
-  
+
+  // set the video playback config
   DisplayInst().SetVideoWindowX(m_pageCfg.MarginX);
   DisplayInst().SetVideoWindowY(m_pageCfg.VideoPosY);
   DisplayInst().SetVideoWindowWidth(DisplayInst().GetScreenWidth() - (m_pageCfg.MarginX * 2));
 
+  // fully clear the display and show all black - seems to be needed because the asynch nature of the framebuffer
+  // can sometimes still leave bits of persisting terminal text
   usleep(1 * 1000000);  
   DisplayInst().Clear();
   DisplayInst().Present();    
@@ -741,7 +746,10 @@ int QuanTermApp::AppMain()
   DrawFilledCircle(hw - r, hh + r, r, 0xff888888);            
   DisplayInst().Present();    
   usleep(1 * 1000000);
-  DisplayInst().Clear();      
+  DisplayInst().Clear();
+
+  // this triggers the GPIO connected system to init if its compiled in
+  ReadGPIOEmulatedChar();
 
   cairo_surface_t *surface = cairo_image_surface_create_for_data((unsigned char *)DisplayInst().GetSurfacePtr(),
 								 CAIRO_FORMAT_ARGB32, 

@@ -15,3 +15,6 @@ void EnableRawMode();
 void DisableRawMode();
 bool Kbhit();
 char ReadChar();
+
+/// On the RPi this will initalise the GPIOs and trigger a self-test of the LEDs.
+char ReadGPIOEmulatedChar();
