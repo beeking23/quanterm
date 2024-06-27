@@ -19,6 +19,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <cmath>
 #include <cstdint>
 #include <vector>
+#include <functional>
 
 #include "fb-display.h"
 
@@ -300,7 +301,15 @@ void FBDisplay::vlcDisplay()
   } else {
     const int xpos = (GetScreenWidth() - (m_videoWidth)) / 2;    
     BlitImage16BitColor(m_vlcFrame, m_videoWidth, m_videoHeight, xpos, ypos);
-  }  
+  }
+  
+  m_videoFrameObserver();
+}
+
+void FBDisplay::vlcStopEvent()
+{
+  printf("Stop event\n");
+  m_videoStopObserver();
 }
 
 struct VLCImpl {
@@ -349,6 +358,8 @@ bool FBDisplay::VideoPlay(const char *filename)
   if(!m_vlcPixels)
     m_vlcPixels = new uint16_t[m_videoHeight * m_videoWidth];
 
+  libvlc_event_manager_t *eventManager = libvlc_media_player_event_manager(m_vlcImpl->mp);
+  libvlc_event_attach(eventManager, libvlc_MediaPlayerStopped, VLCCallbacks::stopEvent, this);
   libvlc_video_set_callbacks(m_vlcImpl->mp, VLCCallbacks::lock, VLCCallbacks::unlock, VLCCallbacks::display, this);
   libvlc_video_set_format(m_vlcImpl->mp, "RV16", m_videoWidth, m_videoHeight, m_videoWidth * sizeof(uint16_t));
   libvlc_media_player_play(m_vlcImpl->mp);

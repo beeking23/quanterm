@@ -38,6 +38,14 @@ public:
 
   bool VideoPlay(const char *filename);
   void VideoStop();
+
+  void SetVideoFrameObserver(std::function<void()> observer) {
+    m_videoFrameObserver = observer;
+  }
+
+  void SetVideoStopObserver(std::function<void()> observer) {
+    m_videoStopObserver = observer;
+  }  
   
   void SetVideoWindowX(int x) { m_videoWindowX = x; }
   void SetVideoWindowY(int y) { m_videoWindowY = y; }
@@ -48,6 +56,7 @@ protected:
   void vlcLock(void **pPixels);
   void vlcUnlock(const uint16_t *pixels);
   void vlcDisplay();
+  void vlcStopEvent();
   
 private:
   void StrokeCharacterLine(float x1, float y1, float x2, float y2, int xoff, int yoff);
@@ -67,6 +76,9 @@ private:
   uint16_t *m_vlcPixels = nullptr;  
   int m_videoWidth = 320;
   int m_videoHeight = 240;
+
+  std::function<void()> m_videoFrameObserver;
+  std::function<void()> m_videoStopObserver;  
 
   int m_videoWindowWidth = 320;
   int m_videoWindowX = 0;
@@ -90,6 +102,11 @@ private:
     static void display(void *data, void* /*unused id*/) {
       FBDisplay *thiz = (FBDisplay *)data;
       thiz->vlcDisplay();
+    }
+
+    static void stopEvent(const struct libvlc_event_t */*event*/, void *data) {
+      FBDisplay *thiz = (FBDisplay *)data;
+      thiz->vlcStopEvent();
     }
   };
 

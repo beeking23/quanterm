@@ -18,3 +18,5 @@ char ReadChar();
 
 /// On the RPi this will initalise the GPIOs and trigger a self-test of the LEDs.
 char ReadGPIOEmulatedChar();
+
+void SetGPIOAttractorState(bool idling, double timeMS);

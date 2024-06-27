@@ -21,6 +21,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <chrono>
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 
 #include <cairo.h>
 
@@ -37,6 +38,39 @@ CairoPtr& CairoInst() {
   static CairoPtr g_cr = nullptr;
   return g_cr;
 }
+
+double RandFloat(const double minV, const double maxV)
+{
+  return minV + (double(rand()) * (maxV - minV)) / double(RAND_MAX);
+}
+
+#if 0
+rounded rect
+
+/* a custom shape that could be wrapped in a function */
+double x         = 25.6,        /* parameters like cairo_rectangle */
+       y         = 25.6,
+       width         = 204.8,
+       height        = 204.8,
+       aspect        = 1.0,     /* aspect ratio */
+       corner_radius = height / 10.0;   /* and corner curvature radius */
+
+double radius = corner_radius / aspect;
+double degrees = M_PI / 180.0;
+
+cairo_new_sub_path (cr);
+cairo_arc (cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
+cairo_arc (cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
+cairo_arc (cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
+cairo_arc (cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
+cairo_close_path (cr);
+
+cairo_set_source_rgb (cr, 0.5, 0.5, 1);
+cairo_fill_preserve (cr);
+cairo_set_source_rgba (cr, 0.5, 0, 0, 0.5);
+cairo_set_line_width (cr, 10.0);
+cairo_stroke (cr);
+#endif
 
 /// Little container class for a data property from the page config file.
 /// Total overkill :)
@@ -116,9 +150,9 @@ public:
   DEF_Q_DOUBLE(ButtonHeight, 18 + 3);
   DEF_Q_DOUBLE(ButtonBorder, 3);
   DEF_Q_DOUBLE(ScrollSpeed, 5);
-  DEF_Q_DOUBLE(VideoPosY, 40);  
+  DEF_Q_DOUBLE(VideoPosY, 40);
+  DEF_Q_DOUBLE(IdleTimeoutSeconds, 15); 
   
-
   DEF_Q_COLOUR(TextColour, QRGB(0.0f, 1.0f, 0.0f));
   DEF_Q_COLOUR(TextBackgroundColour, QRGB(0.0f, 0.0f, 0.0f));
   DEF_Q_COLOUR(ImageBorderColour, QRGB(0.0, 0.4, 0.0));
@@ -216,6 +250,8 @@ protected:
   int ShowWrappedText(const char *txt, const int x, int y, const int maxWidth);
   /// reads a specially crafted file contain a page.
   bool ReadPageData(const std::string& filename, std::string& content, std::vector<ButtonData>& buttons);
+  /// Renders the attractor screen which is shown when the unit is idle and waiting for a user.
+  void RenderAttractorScreen();
   
 private:
   /// internal to RenderPageContent - renders the current text at the current location and current formatting
@@ -253,6 +289,8 @@ private:
   int m_preformat = PREFORMAT_OFF;
 
   QuanTermPageConfig m_pageCfg;
+
+  bool m_wantVideoStop = false;  
 };
 
 int QuanTermApp::ShowWrappedText(const char *txt, const int x, int y, const int maxWidth)
@@ -659,7 +697,8 @@ void QuanTermApp::LoadNewPage(const std::string& filename)
   
   if(!ReadPageData(filename, m_pageData, m_buttons))
     return;
-  DisplayInst().VideoStop();  
+  DisplayInst().VideoStop();
+  m_wantVideoStop = false;
   m_pageLen = m_pageData.size();
   m_pageProgress = 0;  
   
@@ -677,7 +716,7 @@ void QuanTermApp::RenderCurrentPage()
   }
   
   RenderPageContent(m_pageData, m_pageProgress);
-  cairo_surface_flush(cairo_get_target(CairoInst()));  
+  cairo_surface_flush(cairo_get_target(CairoInst()));
   DisplayInst().Present();    
 }
 
@@ -693,6 +732,7 @@ void QuanTermApp::HandleButtonPress(int n, const std::vector<QuanTermApp::Button
   if(dotPos <= 0 || dotPos == std::string::npos) {
     if(cmd == "video_stop")  {
       // redraw the page after stopping to remove the overlaid video image.
+      m_wantVideoStop = false;
       DisplayInst().VideoStop();
       RenderCurrentPage();
     }
@@ -710,6 +750,140 @@ void QuanTermApp::HandleButtonPress(int n, const std::vector<QuanTermApp::Button
       LoadNewPage(cmd);
     }
   }
+}
+
+class AttractorLogoSprite {
+public:
+  AttractorLogoSprite(const double sizeScale, const double alpha);  
+  void Render(cairo_surface_t *logoImg, const double elapsed);
+
+  double RandomSpeed(double direction) {
+    return RandFloat(150, 200) * m_sizeScale * (direction > 0.0 ? 1.0 : -1.0);
+  }
+
+  double RandomSpeed() {
+    return RandomSpeed(RandFloat(-1.0, 1.0));
+  }
+  
+protected:
+  double m_xpos;
+  double m_ypos;
+  double m_speedx;
+  double m_speedy;
+  double m_sizeScale;
+  double m_alpha;
+};
+
+AttractorLogoSprite::AttractorLogoSprite(const double sizeScale, const double alpha)
+  : m_xpos((DisplayInst().GetScreenWidth()/2) + RandFloat(100, DisplayInst().GetScreenWidth() / 4)),
+    m_ypos((DisplayInst().GetScreenHeight()/2) + RandFloat(100, DisplayInst().GetScreenHeight() / 4)),
+    m_sizeScale(sizeScale),
+    m_alpha(alpha)
+{
+  m_speedx = RandomSpeed();
+  m_speedy = RandomSpeed();
+}
+
+void AttractorLogoSprite::Render(cairo_surface_t *logoImg, const double elapsedTime)
+{
+  auto& cr = CairoInst();  
+  cairo_save(cr);
+  
+  double height = cairo_image_surface_get_height(logoImg);
+  double width = cairo_image_surface_get_width(logoImg);
+  
+  double aspect = height / width;
+  double targetWidth = DisplayInst().GetScreenWidth() * m_sizeScale;
+  double targetHeight = targetWidth * aspect;
+
+  double targetWidth2 = targetWidth / 2;
+  double targetHeight2 = targetHeight / 2;
+
+  cairo_translate(cr, m_xpos, m_ypos);
+  cairo_scale(cr, targetWidth/width, targetHeight/height);
+  cairo_translate(cr, -0.5 * width, -0.5 * height);
+  cairo_set_source_surface(CairoInst(), logoImg, 0, 0);
+  cairo_paint_with_alpha(CairoInst(), m_alpha);
+  cairo_restore(CairoInst());
+
+  double rightEdge = DisplayInst().GetScreenWidth() - targetWidth2;
+  double leftEdge = targetWidth2;
+  double bottomEdge = DisplayInst().GetScreenHeight() - targetHeight2;
+  double topEdge = targetHeight2;
+  
+  m_xpos += m_speedx * elapsedTime;
+  m_ypos += m_speedy * elapsedTime;
+
+  if(m_xpos > rightEdge) {
+    m_speedx = RandomSpeed(-m_speedx);
+    m_xpos = rightEdge;
+    //m_xpos = leftEdge;
+  }
+  
+  if(m_xpos < leftEdge) {
+    m_speedx = RandomSpeed(-m_speedx);
+    m_xpos = leftEdge;
+    //m_xpos = rightEdge;
+  }
+
+  if(m_ypos > bottomEdge) {
+    m_speedy = RandomSpeed(-m_speedy);
+    m_ypos = bottomEdge;
+    //m_ypos = topEdge;
+  }
+  
+  if(m_ypos < topEdge) {
+    m_speedy = RandomSpeed(-m_speedy);
+    m_ypos = topEdge;
+    //m_ypos = bottomEdge;
+  }
+}
+
+void QuanTermApp::RenderAttractorScreen()
+{
+  static cairo_surface_t *logoImg = nullptr;
+    
+  if(!logoImg) {
+    logoImg = cairo_image_surface_create_from_png("logo.png");
+  }
+    
+  if(!logoImg)
+    return;
+
+  DisplayInst().Clear();
+
+  // these are rendered in order so makre sure the smallest is first
+  static std::vector<AttractorLogoSprite> sprites = {
+    AttractorLogoSprite(0.2, 0.2),    
+    AttractorLogoSprite(0.2, 0.2),
+    AttractorLogoSprite(0.2, 0.2),
+    AttractorLogoSprite(0.3, 0.5),
+    AttractorLogoSprite(0.3, 0.5),
+    AttractorLogoSprite(0.4, 1.0)
+  };
+  
+  static double lastTime = GetTimeMS();
+  double elapsed = (GetTimeMS() - lastTime) / 1000.0;
+  lastTime = GetTimeMS();
+
+  for(size_t n = 0; n<sprites.size(); n++)
+    sprites[n].Render(logoImg, elapsed);
+
+  auto& cr = CairoInst();    
+  cairo_select_font_face (cr, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, m_pageCfg.FontSizeHeading);
+  const char *msg = "Press any button to start";
+  cairo_set_source_rgb(cr, m_pageCfg.TextColour);
+  cairo_text_extents_t extents;
+  cairo_text_extents(cr, msg, &extents);
+  
+  int x = (DisplayInst().GetScreenWidth() - extents.width) / 2;
+  int y = DisplayInst().GetScreenHeight() - extents.height - 30;
+  cairo_move_to(cr, x, y);
+  cairo_set_source_rgb(cr, m_pageCfg.TextColour);  
+  cairo_show_text(cr, msg);
+  
+  DisplayInst().Present();
 }
 
 int QuanTermApp::AppMain()
@@ -780,43 +954,91 @@ int QuanTermApp::AppMain()
 								 DisplayInst().GetStride());
   CairoInst() = cairo_create(surface);
 
-  LoadNewPage("index.txt");
+
+  
+  bool quit = false;
+  char lastChar = 0;
+  bool idling = true;
+  double lastFrameTime = GetTimeMS();
+  double lastKeyTime = GetTimeMS();
+  double lastIdleTime = GetTimeMS();
+
+  DisplayInst().SetVideoFrameObserver([&lastIdleTime]() {
+    lastIdleTime = GetTimeMS();
+  });
+
+  DisplayInst().SetVideoStopObserver([this]() {
+    m_wantVideoStop = true;
+  });  
 
   EnableRawMode();
-  bool quit = false;
-  double lastTime = GetTimeMS();
-  char lastChar = 0;
-  double lastKeyTime = GetTimeMS();
   
   while(!quit) {
-    if(m_pageProgress < m_pageLen) {
-      m_pageProgress = std::min(m_pageLen, m_pageProgress+int(m_pageCfg.ScrollSpeed));
-      RenderCurrentPage();
+    SetGPIOAttractorState(idling, GetTimeMS());
+
+    bool limitFPS = true;
+    if(idling) {
+      RenderAttractorScreen();
+      limitFPS = false;
+    } else {
+      if(m_pageProgress < m_pageLen) {
+	m_pageProgress = std::min(m_pageLen, m_pageProgress+int(m_pageCfg.ScrollSpeed));
+	RenderCurrentPage();
+	limitFPS = false;
+      }
     }
-    
-    double elapsed = lastTime - GetTimeMS();
+
     constexpr double FrameTime = 1000.0 / 60.0;
-    if(elapsed < FrameTime) {
+    double elapsed = lastFrameTime - GetTimeMS();
+    if(elapsed < FrameTime && limitFPS) {
       double toSleep = FrameTime - elapsed;
       usleep(1000 * toSleep);
     }
+    lastFrameTime = GetTimeMS();    
+
+    double idleTime = (GetTimeMS() - lastIdleTime) / 1000.0;
+    static constexpr int IdleCheckRate = 10;
+    static int lastIdleSecond = 0;
+    if(int(idleTime/IdleCheckRate) != lastIdleSecond) {
+      printf("Idle for %.02f / %.02f\n", idleTime, m_pageCfg.IdleTimeoutSeconds);
+      lastIdleSecond = int(idleTime/IdleCheckRate);
+    }
     
-    if(Kbhit()) {  
+    if(idleTime > m_pageCfg.IdleTimeoutSeconds) {
+      DisplayInst().VideoStop();
+      idling = true;
+      lastIdleTime = GetTimeMS();
+    }
+    
+    if(Kbhit()) {
+      static int kc = 0;
+      printf("Kb hit %i\n", kc++);
+      lastIdleTime = GetTimeMS();      
       char c = ReadChar();
       if(c != lastChar || (GetTimeMS() - lastKeyTime) > 2000) {
 	if(c == 'q') {
 	  quit = true;
 	} else if(c >= '1' && c <= '8') {
-	  int btn = c - '1';
-	  HandleButtonPress(btn, m_buttons);
+	  if(!idling) {
+	    int btn = c - '1';
+	    HandleButtonPress(btn, m_buttons);
+	  } else {
+	    LoadNewPage("index.txt");
+	    idling = false;
+	  }
 	}
 	lastChar = c;
 	lastKeyTime = GetTimeMS();
       }
     }
-    
-    lastTime = GetTimeMS();    
+
+    if(m_wantVideoStop) {
+      m_wantVideoStop = false;
+      DisplayInst().VideoStop();
+      RenderCurrentPage();      
+    }
   }
+  
   DisableRawMode();  
   
   cairo_destroy(CairoInst());

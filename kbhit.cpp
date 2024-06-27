@@ -29,6 +29,9 @@ constexpr int LedPins[8] = {
 
 int g_initButtonStates[8] = {0};
 
+bool g_idling = false;
+double g_timeMS = 0.0;
+
 
 // returns an character code corresponding to a GPIO connected button or 0.
 char ReadGPIOEmulatedChar()
@@ -62,10 +65,14 @@ char ReadGPIOEmulatedChar()
     GPIOInit = true;    
   }
 
+  int lightToBlink = -1;
+  if(g_idling)
+    lightToBlink = int(g_timeMS / 200.0) % 4;
+  
   for(int n = 0; n<8; n++) {
     if(g_initButtonStates[n] == 1) {
       int v = digitalRead(ButtonPins[n]);
-      digitalWrite(LedPins[n], v ? HIGH : LOW);      
+      digitalWrite(LedPins[n], v && (lightToBlink != (n&3)) ? HIGH : LOW);
       if(!v) {
 	return '1' + n;
       }
@@ -75,11 +82,22 @@ char ReadGPIOEmulatedChar()
   return 0;
 }
 
+void SetGPIOAttractorState(bool idling, double timeMS)
+{
+  g_idling = idling;
+  g_timeMS = timeMS;
+}
+
 #else
 
 char ReadGPIOEmulatedChar()
 {
   return 0;
+}
+
+void SetGPIOAttractorState(bool, double)
+{
+
 }
 
 #endif
