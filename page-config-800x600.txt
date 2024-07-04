@@ -12,3 +12,4 @@ TextBackgroundColour=[0, 0, 0]
 ImageBorderColour=[0.0, 0.4, 0.0]
 ButtonColour=[0.5, 1.0, 0.5]
 VideoPosY=100
+IdleTimeoutSeconds=180
