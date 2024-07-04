@@ -12,6 +12,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 #include <iostream>
 #include <fstream>
@@ -45,33 +46,22 @@ double RandFloat(const double minV, const double maxV)
   return minV + (double(rand()) * (maxV - minV)) / double(RAND_MAX);
 }
 
-#if 0
-rounded rect
+void cairo_rounded_rectangle(double x, double y, double width, double height)
+{
+  auto& cr = CairoInst();
+  double aspect = 1.0;
+  double corner_radius = height / 10.0;
 
-/* a custom shape that could be wrapped in a function */
-double x         = 25.6,        /* parameters like cairo_rectangle */
-       y         = 25.6,
-       width         = 204.8,
-       height        = 204.8,
-       aspect        = 1.0,     /* aspect ratio */
-       corner_radius = height / 10.0;   /* and corner curvature radius */
+  double radius = corner_radius / aspect;
+  double degrees = M_PI / 180.0;
 
-double radius = corner_radius / aspect;
-double degrees = M_PI / 180.0;
-
-cairo_new_sub_path (cr);
-cairo_arc (cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
-cairo_arc (cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
-cairo_arc (cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
-cairo_arc (cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
-cairo_close_path (cr);
-
-cairo_set_source_rgb (cr, 0.5, 0.5, 1);
-cairo_fill_preserve (cr);
-cairo_set_source_rgba (cr, 0.5, 0, 0, 0.5);
-cairo_set_line_width (cr, 10.0);
-cairo_stroke (cr);
-#endif
+  cairo_new_sub_path (cr);
+  cairo_arc (cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
+  cairo_arc (cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
+  cairo_arc (cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
+  cairo_arc (cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
+  cairo_close_path (cr);
+}
 
 /// Little container class for a data property from the page config file.
 /// Total overkill :)
@@ -229,8 +219,8 @@ bool QuanTermPageConfig::LoadPageConfig(const char *filename)
 
 double GetTimeMS()
 {
-  static const auto start = std::chrono::high_resolution_clock::now();
-  const auto current = std::chrono::high_resolution_clock::now();
+  static const auto start = std::chrono::steady_clock::now();
+  const auto current = std::chrono::steady_clock::now();
   const std::chrono::duration<double, std::milli> delta = current - start;
   return delta.count();
 }
@@ -275,6 +265,10 @@ protected:
 public:
   int AppMain();
 
+  void SetPagesRoot(const char *dir) {
+    m_pagesRoot = dir;
+  }
+
 private:
   std::string m_pageData;
   std::vector<ButtonData> m_buttons;
@@ -291,7 +285,9 @@ private:
 
   QuanTermPageConfig m_pageCfg;
 
-  bool m_wantVideoStop = false;  
+  bool m_wantVideoStop = false;
+
+  std::string m_pagesRoot = "./";
 };
 
 int QuanTermApp::ShowWrappedText(const char *txt, const int x, int y, const int maxWidth)
@@ -443,7 +439,7 @@ void QuanTermApp::SizeTextMultiline(const char *txt, int& width, int& height)
 /// Read a file containing a page of text, images, stuff and button definitions.
 bool QuanTermApp::ReadPageData(const std::string& filename, std::string& content, std::vector<QuanTermApp::ButtonData>& buttons)
 {
-  std::ifstream file(filename);
+  std::ifstream file(m_pagesRoot + "/" + filename);
   if(!file) {
     printf("Failed to read: '%s'\n", filename.c_str());
     return false;
@@ -550,7 +546,10 @@ void QuanTermApp::RenderImage(const std::string& curText)
       currentImageFile = "";
     }
     currentImageFile = curText;
-    currentImageData = cairo_image_surface_create_from_png(curText.c_str());
+    currentImageData = cairo_image_surface_create_from_png((m_pagesRoot + "/" + curText).c_str());
+
+    if(!currentImageData)
+      currentImageData = cairo_image_surface_create_from_png("logo.png");
   }
     
   if(currentImageData) {
@@ -667,12 +666,14 @@ void QuanTermApp::RenderSideButtons(const std::vector<QuanTermApp::ButtonData>& 
   cairo_set_source_rgb(CairoInst(), m_pageCfg.ButtonColour);
     
   auto DrawButton = [&](const QuanTermApp::ButtonData& btnData, const int side, const int num) {
+    if(btnData.m_caption == "---")
+      return;
     cairo_set_source_rgb(CairoInst(), m_pageCfg.ButtonColour);
     int xpos = (side ? DisplayInst().GetScreenWidth() - m_pageCfg.MarginX : 0) + m_pageCfg.ButtonBorder;
     int ypos = (m_pageCfg.ButtonHeight/2) + ((num * 2) * m_pageCfg.ButtonHeight) + m_pageCfg.ButtonBorder;
     int xsize = m_pageCfg.MarginX - (m_pageCfg.ButtonBorder * 2);
     int ysize = m_pageCfg.ButtonHeight - (m_pageCfg.ButtonBorder * 2);
-    cairo_rectangle(CairoInst(), xpos, ypos, xsize, ysize);
+    cairo_rounded_rectangle(xpos, ypos, xsize, ysize);
     cairo_stroke(CairoInst());
 
     const auto caption = btnData.m_caption.c_str();
@@ -746,7 +747,7 @@ void QuanTermApp::HandleButtonPress(int n, const std::vector<QuanTermApp::Button
       // force the page load animation to finish so it doesn't interfere with the video.
       m_pageProgress = m_pageLen;
       RenderCurrentPage();    
-      DisplayInst().VideoPlay(cmd.c_str());
+      DisplayInst().VideoPlay((m_pagesRoot + "/" + cmd).c_str());
     } else if(ext == ".txt") {
       LoadNewPage(cmd);
     }
@@ -818,25 +819,21 @@ void AttractorLogoSprite::Render(cairo_surface_t *logoImg, const double elapsedT
   if(m_xpos > rightEdge) {
     m_speedx = RandomSpeed(-m_speedx);
     m_xpos = rightEdge;
-    //m_xpos = leftEdge;
   }
   
   if(m_xpos < leftEdge) {
     m_speedx = RandomSpeed(-m_speedx);
     m_xpos = leftEdge;
-    //m_xpos = rightEdge;
   }
 
   if(m_ypos > bottomEdge) {
     m_speedy = RandomSpeed(-m_speedy);
     m_ypos = bottomEdge;
-    //m_ypos = topEdge;
   }
   
   if(m_ypos < topEdge) {
     m_speedy = RandomSpeed(-m_speedy);
     m_ypos = topEdge;
-    //m_ypos = bottomEdge;
   }
 }
 
@@ -998,7 +995,7 @@ int QuanTermApp::AppMain()
     lastFrameTime = GetTimeMS();    
 
     double idleTime = (GetTimeMS() - lastIdleTime) / 1000.0;
-    static constexpr int IdleCheckRate = 10;
+    static constexpr int IdleCheckRate = 60;
     static int lastIdleSecond = 0;
     if(int(idleTime/IdleCheckRate) != lastIdleSecond) {
       printf("Idle for %.02f / %.02f\n", idleTime, m_pageCfg.IdleTimeoutSeconds);
@@ -1049,8 +1046,15 @@ int QuanTermApp::AppMain()
 }
 
 
-int main(int, char **)
+int main(int ac, char **av)
 {
-  QuanTermApp theApp;
+  QuanTermApp theApp;  
+  for(int n = 1; n<ac; n++) {
+    if(strcmp(av[n], "-headless") == 0)
+      SetKbHeadless(true);
+    printf("Pages root: %s\n", av[n]);
+    theApp.SetPagesRoot(av[n]);
+  }
+
   return theApp.AppMain();
 }

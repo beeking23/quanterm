@@ -11,6 +11,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 // from https://stackoverflow.com/questions/29335758/using-kbhit-and-getch-on-linux
 
+void SetKbHeadless(bool b);
 void EnableRawMode();
 void DisableRawMode();
 bool Kbhit();

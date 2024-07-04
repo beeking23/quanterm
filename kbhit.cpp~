@@ -1,0 +1,36 @@
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+
+void EnableRawMode()
+{
+    termios term;
+    tcgetattr(0, &term);
+    term.c_lflag &= ~(ICANON | ECHO); // Disable echo as well
+    tcsetattr(0, TCSANOW, &term);
+}
+
+void DisableRawMode()
+{
+    termios term;
+    tcgetattr(0, &term);
+    term.c_lflag |= ICANON | ECHO;
+    tcsetattr(0, TCSANOW, &term);
+}
+
+bool Kbhit()
+{
+    int byteswaiting;
+    ioctl(0, FIONREAD, &byteswaiting);
+    return byteswaiting > 0;
+}
+
+char ReadChar()
+{
+  char ch;
+  int s = read(0,&ch,1);
+  if(s > 0)
+    return ch;
+  else
+    return 0;
+}

@@ -11,6 +11,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #if !defined(__x86_64__)
 
@@ -74,6 +75,7 @@ char ReadGPIOEmulatedChar()
       int v = digitalRead(ButtonPins[n]);
       digitalWrite(LedPins[n], v && (lightToBlink != (n&3)) ? HIGH : LOW);
       if(!v) {
+	printf("GPIO button %i down\n", n);
 	return '1' + n;
       }
     }
@@ -102,30 +104,67 @@ void SetGPIOAttractorState(bool, double)
 
 #endif
 
+static bool g_headless = false;
+
+void SetKbHeadless(bool b)
+{
+  g_headless = b;
+  if(g_headless) {
+    printf("Quanterm is headless\n");
+    return;
+  }  
+}
+
 void EnableRawMode()
 {
-    termios term;
-    tcgetattr(0, &term);
-    term.c_lflag &= ~(ICANON | ECHO); // Disable echo as well
-    tcsetattr(0, TCSANOW, &term);
+  if(g_headless)
+    return;
+  
+  termios term;
+  if(tcgetattr(0, &term) < 0)
+    return;
+  
+  term.c_lflag &= ~(ICANON | ECHO); // Disable echo as well
+  tcsetattr(0, TCSANOW, &term);
+  
+  printf("Enabled raw mode\n");
+
 }
 
 void DisableRawMode()
 {
-    termios term;
-    tcgetattr(0, &term);
-    term.c_lflag |= ICANON | ECHO;
-    tcsetattr(0, TCSANOW, &term);
+  if(g_headless)
+    return;  
+  
+  termios term;
+  if(tcgetattr(0, &term) < 0)
+    return;
+    
+  term.c_lflag |= ICANON | ECHO;
+  tcsetattr(0, TCSANOW, &term);
+  
+  printf("Disabled raw mode\n");    
 }
+
+
 
 bool Kbhit()
 {
   char ch = ReadGPIOEmulatedChar();
   if(ch != 0)
     return true;
+
+  if(g_headless)
+    return false;
+    
+  int byteswaiting = 0;
+  if(ioctl(0, FIONREAD, &byteswaiting) < 0) {
+    printf("Failed ioctl\n");
+    return 0;
+  }
   
-  int byteswaiting;
-  ioctl(0, FIONREAD, &byteswaiting);
+  if(byteswaiting != 0)
+    printf("Bytes waiting %i\n", byteswaiting);
   return byteswaiting > 0;
 }
 
@@ -134,6 +173,9 @@ char ReadChar()
   char ch = ReadGPIOEmulatedChar();
   if(ch != 0)
     return ch;
+
+  if(g_headless)
+    return 0;  
   
   int s = read(0,&ch,1);
   if(s > 0)
